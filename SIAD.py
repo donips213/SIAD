@@ -91,24 +91,31 @@ def gerar_imagens_temp(res_n, res_g, fator, tiff_path, sid, regra_slack=20):
     plt.close()
 
     try:
-        with rasterio.open(tiff_path) as src:
-            new_shape = (int(src.height/fator), int(src.width/fator))
-            data = src.read(1, out_shape=new_shape)
-            plt.figure(figsize=(8, 8))
-            plt.imshow(data, cmap='terrain', alpha=0.8)
-            if res_n:
-                xs, ys = transform('EPSG:4326', src.crs, res_n['lons_draw'], res_n['lats_draw'])
-                rows, cols = src.index(xs, ys)
-                plt.plot(np.array(cols)/fator, np.array(rows)/fator, 'r-', linewidth=2, label='Otimizada')
-            if res_g:
-                xs, ys = transform('EPSG:4326', src.crs, res_g['lons_draw'], res_g['lats_draw'])
-                rows, cols = src.index(xs, ys)
-                plt.plot(np.array(cols)/fator, np.array(rows)/fator, 'm--', linewidth=2, label='Gravidade')
-            plt.axis('off')
-            plt.legend()
-            plt.tight_layout()
-            plt.savefig(path_mapa, dpi=100)
-            plt.close()
+    with rasterio.open(tiff_path) as src:
+        new_shape = (int(src.height/fator), int(src.width/fator))
+        data = src.read(1, out_shape=new_shape)
+        plt.figure(figsize=(8, 8))
+        plt.imshow(data, cmap='terrain', alpha=0.8)
+        
+        if res_n:
+            xs, ys = transform('EPSG:4326', src.crs, res_n['lons_draw'], res_n['lats_draw'])
+            # Solução: iteração ponto a ponto em vez de array direto
+            rows_cols = [src.index(x, y) for x, y in zip(xs, ys)]
+            rows = [rc[0] for rc in rows_cols]
+            cols = [rc[1] for rc in rows_cols]
+            plt.plot(np.array(cols)/fator, np.array(rows)/fator, 'r-', linewidth=2, label='Otimizada')
+            
+        if res_g:
+            xs, ys = transform('EPSG:4326', src.crs, res_g['lons_draw'], res_g['lats_draw'])
+            # Solução: iteração ponto a ponto em vez de array direto
+            rows_cols = [src.index(x, y) for x, y in zip(xs, ys)]
+            rows = [rc[0] for rc in rows_cols]
+            cols = [rc[1] for rc in rows_cols]
+            plt.plot(np.array(cols)/fator, np.array(rows)/fator, 'm--', linewidth=2, label='Gravidade')
+            
+        plt.axis('off')
+        plt.legend()
+        plt.tight_layout()
     except Exception as e:
         st.warning(f"Não foi possível gerar a imagem do mapa para o PDF: {e}")
     return path_perfil, path_mapa
@@ -283,7 +290,7 @@ def gerar_pdf_bytes(inputs, res_n, res_g, fator, tiff_path, sid):
         if os.path.exists(path_mapa): os.remove(path_mapa)
     except OSError as e:
         st.warning(f"Não foi possível remover arquivos temporários: {e}")
-    return pdf.output(dest='S').encode('latin-1')
+    return bytes(pdf.output())
 
 # --- 3. FUNÇÕES AUXILIARES GIS ---
 @st.cache_data
