@@ -502,13 +502,24 @@ st.sidebar.title("🎛️ Painel de Controle")
 st.sidebar.header("📁 1. Mapa Base (Topografia)")
 tiff_file = st.sidebar.file_uploader("Upload TIFF", type=["tif", "tiff"])
 if tiff_file:
-    tiff_path = f"temp_topografia_{sid}.tif"
-    with open(tiff_path, "wb") as f: f.write(tiff_file.getbuffer())
-elif os.path.exists("topografia_utm.tif"): 
-    tiff_path = "topografia_utm.tif"
-else: 
-    st.warning("Faça o upload do TIFF para iniciar.")
-    st.stop()
+    with open("temp_topografia.tif", "wb") as f: 
+        f.write(tiff_file.getbuffer())
+    tiff_path = "temp_topografia.tif"
+else:
+    # Procura e extrai automaticamente o ZIP do GitHub
+    pasta_atual = os.path.dirname(os.path.abspath(__file__))
+    zip_path = os.path.join(pasta_atual, "topografia_utm.zip")
+    tiff_extraido = "topografia_utm.tif"
+    
+    if os.path.exists(zip_path):
+        with zipfile.ZipFile(zip_path, 'r') as zip_ref:
+            zip_ref.extractall(pasta_atual)
+        tiff_path = os.path.join(pasta_atual, tiff_extraido)
+    elif os.path.exists(os.path.join(pasta_atual, "topografia_utm.tif")):
+        tiff_path = os.path.join(pasta_atual, "topografia_utm.tif")
+    else: 
+        st.warning("Faça o upload do TIFF ou adicione topografia_utm.zip no GitHub para iniciar.")
+        st.stop()
 
 fator = st.sidebar.slider("Resolução do Cálculo (1=Alta, 20=Baixa)", 1, 20, 5)
 
