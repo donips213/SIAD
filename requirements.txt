@@ -1,0 +1,13 @@
+streamlit
+numpy
+rasterio
+plotly
+scikit-image
+folium
+streamlit-folium
+geopandas
+pandas
+shapely
+fpdf2
+matplotlib
+scipy
