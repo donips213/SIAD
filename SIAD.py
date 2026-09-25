@@ -91,11 +91,11 @@ def gerar_imagens_temp(res_n, res_g, fator, tiff_path, sid, regra_slack=20):
     plt.close()
 
     try:
-    with rasterio.open(tiff_path) as src:
-        new_shape = (int(src.height/fator), int(src.width/fator))
-        data = src.read(1, out_shape=new_shape)
-        plt.figure(figsize=(8, 8))
-        plt.imshow(data, cmap='terrain', alpha=0.8)
+        with rasterio.open(tiff_path) as src:
+            new_shape = (int(src.height/fator), int(src.width/fator))
+            data = src.read(1, out_shape=new_shape)
+            plt.figure(figsize=(8, 8))
+            plt.imshow(data, cmap='terrain', alpha=0.8)
         
         if res_n:
             xs, ys = transform('EPSG:4326', src.crs, res_n['lons_draw'], res_n['lats_draw'])
