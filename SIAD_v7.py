@@ -233,8 +233,8 @@ def gerar_pdf_bytes(inputs, res_n, res_g, fator, tiff_path, sid):
         "2. Q [m3/s] = Producao[t/ano] / (Dias*24*Disp) / (Cw/100 * SG * 3600)\n"
         "3. V = Q / Area_interna ; D_interno = OD - 2*espessura\n"
         "4. f = 0.25 / [log10(k/(3.7D) + 5.74/Re^0.9)]^2 ; i_agua = f*V^2/(2*g*D)   [m.c.a/m]\n"
-        "5. FL = 0.4794 + 0.5429*(0.01*Cv)^0.1058*(log10(d50) - 1), d50 em MICROMETROS\n"
-        "   (ajuste empirico de terceiros; Durand-Condolios publicaram FL em grafico)\n"
+        "5. FL = 1.3*(0.01*Cv)^0.125*(1 - exp(-6.9*d50)), d50 em MILIMETROS (Schiller e Herbich, 1991)\n"
+        "   (correlacao ajustada a curva grafica de Durand-Condolios; extrapolada para d50 < 0.1 mm)\n"
         "   VL = FL * sqrt(2*g*D*(SG_solido - 1))\n"
         "6. d50 < 40 um (pseudo-homogeneo): J[m.c.a/m] = SG*i_agua  ->  J_polpa[m polpa/m] = i_agua\n"
         "   d50 >= 40 um: Phi = K*[V^2/(g*D*(SG_s-1))]^-1.5 ; J[m.c.a/m] = i_agua*(1+Cv*Phi)\n"
@@ -711,7 +711,7 @@ if diam_int_m <= 0:
     st.sidebar.error("Espessura incompatível com o diâmetro externo."); st.stop()
 st.sidebar.caption(f"Diâmetro interno resultante: {diam_int_m*1000:.1f} mm")
 sg_solido = st.sidebar.number_input("SG do Sólido (t/m³)", 1.5, 8.0, 4.6, help="Densidade real do minério (ex: 4.6 para hematita/itabirito)")
-d50 = st.sidebar.number_input("D50 do Sólido (µm)", 10, 3000, 25, help="Diâmetro mediano em MICROMETROS (a Eq. de FL usa µm)")
+d50 = st.sidebar.number_input("D50 do Sólido (µm)", 10, 3000, 25, help="Diâmetro mediano em MICROMETROS (convertido para mm na Eq. de FL)")
 rugosidade_mm = st.sidebar.number_input("Rugosidade Interna do Tubo (mm)", 0.001, 1.0, 0.045, format="%.3f", help="Aço ≈0.045mm | Polietileno ≈0.015mm")
 visc_cp = st.sidebar.number_input("Viscosidade (cP)", 0.1, 50.0, 1.0, step=0.1)
 visc_polpa = st.sidebar.checkbox("Viscosidade informada é a APARENTE da polpa (Re usa ρ da polpa)", value=False,
@@ -973,8 +973,8 @@ def calcular_gradiente_durand(vel, diam_m, sg_mix, sg_solido_local, d50_micron, 
     - Pseudo-homogeneo (d50 < 40 um): J_mca = SG * i_agua (Wasp et al., 1977)  =>  J = i_agua.
     - Heterogeneo (d50 >= 40 um): Durand-Condolios, J_mca = i_agua*(1 + Cv*Phi), Phi = K*Fr^-1.5
       (forma sem sqrt(C_D); valida so para V >= VL).
-    FL (Eq. 6) e' um ajuste empirico de terceiros com d50 em MICROMETROS (Durand e Condolios
-    publicaram FL em forma grafica).
+    FL (Eq. 6): correlacao de Schiller e Herbich (1991), ajustada a curva grafica de Durand e
+    Condolios, com d50 em MILIMETROS (d50_micron/1000).
     """
     g = G
     vel = max(vel, 1e-6)
@@ -990,7 +990,7 @@ def calcular_gradiente_durand(vel, diam_m, sg_mix, sg_solido_local, d50_micron, 
     f_darcy = 0.25 / (np.log10((rugosidade_m / (3.7 * diam_m)) + (5.74 / re**0.9)))**2
     i_agua = f_darcy * (vel**2) / (2 * g * diam_m)
 
-    fl = 0.4794 + 0.5429 * (0.01 * cv_pct)**0.1058 * (np.log10(d50_micron) - 1)
+    fl = 1.3 * (0.01 * cv_pct)**0.125 * (1.0 - np.exp(-6.9 * d50_micron / 1000.0))
     fl = max(fl, 0.3)
     vl = fl * np.sqrt(2 * g * diam_m * (sg_solido_local - sg_liquido) / sg_liquido)
 
@@ -1223,7 +1223,19 @@ with tab1:
         folium.Marker([res_n['lats'][split_n], res_n['lons'][split_n]], icon=folium.Icon(color='orange', icon='flag'),
                       popup=f"EB-2 (automática) km {res_n['dist_arr'][split_n]:.2f}").add_to(m)
 
-    map_data = st_folium(m, width="100%", height=600)
+    mapa_estatico = st.checkbox("Mostrar mapa estático (use se o mapa interativo não aparecer)", value=False,
+                                help="O mapa estático não permite clicar nem desenhar, mas sempre é exibido.")
+    if mapa_estatico:
+        import streamlit.components.v1 as components
+        components.html(m.get_root().render(), height=600)
+        map_data = None
+    else:
+        try:
+            map_data = st_folium(m, height=600, use_container_width=True, key="mapa_siad",
+                                 returned_objects=["all_drawings", "last_clicked"])
+        except TypeError:
+            map_data = st_folium(m, height=600, width=None, key="mapa_siad",
+                                 returned_objects=["all_drawings", "last_clicked"])
     
     if map_data and map_data.get('all_drawings') is not None:
         current_drawings = map_data['all_drawings']
