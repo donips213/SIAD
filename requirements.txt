@@ -1,13 +1,33 @@
-streamlit
-numpy
-rasterio
-plotly
-scikit-image
-folium
-streamlit-folium
-geopandas
-pandas
-shapely
-fpdf2
-matplotlib
-scipy
+# SIAD v7 - dependências para rodar no Streamlit (local ou Streamlit Community Cloud)
+# Recomendado: Python 3.11 ou 3.12
+
+# Interface
+streamlit>=1.37,<2
+streamlit-folium>=0.22
+folium>=0.17
+
+# Dados e cálculo
+numpy>=1.26,<3
+pandas>=2.1
+scikit-image>=0.22
+
+# Geoprocessamento (as wheels já trazem o GDAL/PROJ; não precisa de packages.txt)
+geopandas>=0.14
+shapely>=2.0
+pyproj>=3.6
+rasterio>=1.3.10
+
+# Gráficos
+plotly>=5.20
+matplotlib>=3.8
+
+# Memorial em PDF: o código usa pdf.output(dest='S').encode('latin-1'),
+# que só funciona na biblioteca fpdf clássica (NÃO usar fpdf2)
+fpdf==1.7.2
+
+# Download de DTM pelo Google Earth Engine (opcional; exige autenticação)
+earthengine-api>=0.1.400
+requests>=2.31
+
+# Configuração do computador na aba de tempos (opcional)
+psutil>=5.9
